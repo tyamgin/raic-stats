@@ -235,7 +235,7 @@
             $(".autocomplete").autocomplete({
                 source: availableTags
             });
-            $('[name=kind], [name^=cb-contest-], #split-by-versions, #username').on('change', () => {
+            $('[name=kind], [name^=cb-contest-], #split-by-versions, #username, #versions-count').on('change', () => {
                 lazyRender();
             });
 
