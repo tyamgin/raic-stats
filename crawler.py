@@ -269,14 +269,21 @@ def update_setting(setting, value):
 def run():
     scrapper = SiteScrapper()
 
-    game_id = int(get_setting('last_id', 388810))
+    game_id = int(get_setting('last_id', 388810)) + 1
 
     while True:
         game = scrapper.crawl_game_page(game_id)
         if not game:  # 404
-            break
+            # check for deleted game
+            with db().cursor() as cursor:
+                cursor.execute("SELECT MAX(game_id) AS max_game_id FROM games")
+                max_game_id = cursor.fetchone()['max_game_id']
+                log.info(f"Max game_id is {max_game_id}")
+                if max_game_id <= game_id:
+                    break
 
-        insert_games([game])
+        if game:
+            insert_games([game])
         update_setting('last_id', game_id)
         game_id += 1
         time.sleep(0.3)
