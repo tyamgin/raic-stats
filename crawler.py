@@ -266,10 +266,14 @@ def update_setting(setting, value):
 
 
 @main.command()
-def run():
+@click.option('--only-game-id', type=int, default=0)
+def run(only_game_id):
     scrapper = SiteScrapper()
 
-    game_id = int(get_setting('last_id', 388810)) + 1
+    if only_game_id:
+        game_id = only_game_id
+    else:
+        game_id = int(get_setting('last_id', 0)) + 1
 
     while True:
         game = scrapper.crawl_game_page(game_id)
@@ -284,6 +288,9 @@ def run():
 
         if game:
             insert_games([game])
+        if only_game_id:
+            break
+
         update_setting('last_id', game_id)
         game_id += 1
         time.sleep(0.3)
@@ -333,7 +340,7 @@ def prepare_db():
         place int
     );""")
 
-    for col in ('id', 'game_id', 'kind', 'contest_id', 'player_name'):
+    for col in ('id', 'game_id', 'kind', 'contest_id', 'player_name', 'player_version'):
         log.info(f"Creating index games({col})")
         try:
             cur.execute(f"CREATE INDEX {col} ON games ({col});")

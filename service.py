@@ -3,6 +3,7 @@ from db import db
 from flask import Flask, jsonify, request
 import jinja2
 import json
+import time
 
 
 app = Flask(__name__)
@@ -14,15 +15,12 @@ templateEnv = jinja2.Environment(loader=templateLoader)
 @app.route("/")
 def main():
     cursor = db().cursor()
-    #cursor.execute("SELECT DISTINCT player_name FROM games")
-    #names = [row['player_name'] for row in cursor.fetchall()]
-    names = []
 
     cursor.execute("SELECT DISTINCT kind FROM games")
     kinds = sorted([row['kind'] for row in cursor.fetchall()])
 
     template = templateEnv.get_template("main.html")
-    return template.render(names_suggest=json.dumps(names), kinds=kinds)
+    return template.render(kinds=kinds, users_v=int(time.time() / 3600))
 
 
 @app.route("/api/gamesWith/<string:player_name>", methods=['GET'])
@@ -39,7 +37,7 @@ def games_with(player_name):
         result = []
     else:
         cursor.execute("SELECT * FROM games WHERE game_id IN"
-                       "(SELECT game_id FROM games WHERE player_name=%s AND (kind=%s) AND contest_id IN (" + ','.join(contest_ids) + "))",
+                       "(SELECT game_id FROM games WHERE player_name=%s AND kind=%s AND contest_id IN (" + ','.join(contest_ids) + "))",
                        (player_name, kind))
         result = [row for row in cursor.fetchall()]
     return jsonify({
@@ -71,5 +69,5 @@ if __name__ == "__main__":
 # https://www.digitalocean.com/community/tutorials/how-to-serve-flask-applications-with-gunicorn-and-nginx-on-ubuntu-18-04
 # pip3 install git+https://github.com/benoitc/gunicorn.git
 #
-# gunicorn --bind 0.0.0.0:5000 wsgi:app --workers 3 --bind unix:service.sock
+# gunicorn --bind 0.0.0.0:5000 wsgi:app --workers 4 --bind unix:service.sock
 # brew services restart nginx
