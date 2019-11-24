@@ -1,0 +1,54 @@
+<div class="input-group flex-nowrap mb-2">
+    <div class="input-group-prepend">
+        <span class="input-group-text" id="addon-wrapping">@</span>
+    </div>
+    <input type="text" id="username" class="form-control autocomplete" placeholder="Username" aria-label="Username"
+           aria-describedby="addon-wrapping">
+</div>
+
+<div class="input-group mb-2">
+    <div class="input-group-prepend">
+        <div class="input-group-text">
+            <input type="checkbox" id="split-by-versions" aria-label="Checkbox for following text input">
+        </div>
+    </div>
+    <div class="form-control">Split by versions</div>
+</div>
+
+<div class="btn-group btn-group-toggle mb-2" data-toggle="buttons">
+  <label class="btn btn-light">
+    <input type="checkbox" name="cb-contest-0" id="cb-contest-0"> Custom games
+  </label>
+  <label class="btn btn-light">
+    <input type="checkbox" name="cb-contest-1" id="cb-contest-1"> Sandbox
+  </label>
+  <label class="btn btn-light">
+    <input type="checkbox" name="cb-contest-2" id="cb-contest-2"> Round 1
+  </label>
+  <label class="btn btn-light">
+    <input type="checkbox" name="cb-contest-3" id="cb-contest-3"> Round 2
+  </label>
+  <label class="btn btn-light">
+    <input type="checkbox" name="cb-contest-4" id="cb-contest-4"> Final
+  </label>
+</div>
+&nbsp;&nbsp;&nbsp;
+<div class="btn-group btn-group-toggle mb-2" data-toggle="buttons">
+    {% for kind in kinds %}
+    <label class="btn btn-light">
+        <input type="radio" name="kind" id="kind-{{ kind }}" value="{{ kind }}"> {{ kind }}
+    </label>
+    {% endfor %}
+</div>
+
+<table id="table" class="table ">
+    <thead>
+    <tr>
+
+    </tr>
+    </thead>
+    <tbody>
+
+
+    </tbody>
+</table>

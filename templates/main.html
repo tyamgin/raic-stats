@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <title>RAIC viewer</title>
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link href="//cdnjs.cloudflare.com/ajax/libs/jqueryui/1.11.2/jquery-ui.css" rel="stylesheet">
+
+    <!--<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>-->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/jqueryui/1.11.2/jquery-ui.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+
+    <script src="/api/users?js=1"></script>
+
+    <style>
+        .img-container {
+            width: 57px;
+            height: 57px;
+            position: relative;
+        }
+        .version-badge {
+            position: absolute;
+            width: 30px;
+            height: 18px;
+            right: 0;
+            bottom: 0;
+            background-color: #ffffffcc;
+            font-size: 12px;
+            text-align: center;
+        }
+        .win-label {
+            color: green;
+        }
+        .lose-label {
+            color: red;
+        }
+        .draw-label {
+            color: gray;
+        }
+
+        .btn-light:hover {
+            background-color: #f8f9fa;
+        }
+
+        .table th {
+            padding-left: 0.25rem;
+            padding-right: 0.25rem;
+        }
+        .table > tbody > tr > td {
+            vertical-align: middle;
+        }
+    </style>
+
+    <script>
+        let users = {};
+        for (let user of users_array) {
+            users[user.name] = user;
+        }
+
+        function render(callback) {
+            const username = $('#username').val();
+            const splitByVersions = $('#split-by-versions').prop('checked');
+            const contestIds = [];
+            for (let i of [0, 1, 2, 3, 4]) {
+                if ($('#cb-contest-' + i).prop('checked')) {
+                    contestIds.push(i);
+                }
+            }
+            const kind = $('[name=kind]:checked').val();
+
+            if (!username) {
+                callback();
+                return;
+            }
+
+            window.localStorage.settings = JSON.stringify({
+                username, splitByVersions, contestIds, kind
+            });
+
+            $.getJSON(`api/gamesWith/${username}?contestIds=${contestIds.join(',')}&kind=${encodeURIComponent(kind)}`, function(data) {
+                console.log(data);
+
+                let data_by_game = {};
+                for (let row of data.result) {
+                    data_by_game[row.game_id] = data_by_game[row.game_id] || [];
+                    data_by_game[row.game_id].push(row);
+                }
+
+                let row_key = (item) => item.player_name + ' ' + item.player_version;
+                let col_key = (item) => item.player_name + (splitByVersions ? ' ' + item.player_version : '');
+
+                let tbl = {};
+                let add = (i, j, prop, value) => {
+                    tbl[i] = tbl[i] || {};
+                    tbl[i][j] = tbl[i][j] || {};
+                    tbl[i][j][prop] = tbl[i][j][prop] || 0;
+                    tbl[i][j][prop] += value;
+                };
+
+                for (let game_id of Object.keys(data_by_game)) {
+                    let items = data_by_game[game_id];
+                    for (let item1 of items) {
+                        if (item1.player_name !== username) {
+                            continue;
+                        }
+                        for (let item2 of items) {
+                            if (item1.id !== item2.id) {
+                                let prop = item1.place < item2.place ? 'w' : (item1.place > item2.place ? 'l' : 'd');
+                                add(row_key(item1), col_key(item2), prop, 1);
+                            }
+                        }
+                    }
+                }
+                console.log(tbl);
+
+
+                let colOrder = {};
+                $.each(tbl, (i, row) => {
+                    $.each(row, (j, data) => {
+                        colOrder[j] = (colOrder[j] || 0) + (data.w || 0);
+                    })
+                });
+                console.log(colOrder);
+
+                let colUsers = Object.keys(colOrder);
+                colUsers.sort((a, b) => colOrder[a] - colOrder[b]);
+                console.log(colUsers);
+
+                let render_image = (name_pair) => {
+                    name_pair = name_pair.split(' ');
+                    let name = name_pair[0];
+                    let version = name_pair[1];
+                    let title = name;
+                    if (version) {
+                        title += '/' + version;
+                    }
+                    let avatar = name in users ? users[name].avatar : 'https://2016.russianaicup.ru/thumbnails/Recar/HrZoFrKyyFUwLEjl.png?fake=1';
+                    let badge = version ? `<div class="version-badge">${version}</div>` : '';
+                    return `<div class="img-container">
+                                <img alt="${name}" title="${title}" src="${avatar}">
+                                ${badge}
+                            </div>`;
+                };
+
+                let render_cell = (name1, name2) => {
+                    let ar = tbl[name1][name2];
+                    if (!ar) {
+                        return '';
+                    }
+                    let w = ar.w || 0;
+                    let l = ar.l || 0;
+                    let d = ar.d || 0;
+                    let res = [];
+                    if (l) {
+                        res.push(`<span class="lose-label">${l}</span>`);
+                    }
+                    if (d) {
+                        res.push(`<span class="draw-label">${d}</span>`);
+                    }
+                    if (w) {
+                        res.push(`<span class="win-label">${w}</span>`);
+                    }
+                    return res.join('+');
+                };
+
+                let $table = $('#table');
+                $table.find('thead').html(`<tr><th scope="col">#</th></tr>`);
+                for (let name of colUsers) {
+                    $table.find('thead tr').append(`<th scope="col">${render_image(name)}</th>`);
+                }
+                $table.find('tbody').html('');
+                $.each(tbl, (i, row) => {
+                    $table.find('tbody').append('<tr></tr>');
+                    let $tr = $table.find('tbody tr:last');
+                    $tr.append(`<th scope="row">${render_image(i)}</th>`);
+                    for (let name of colUsers) {
+                        $tr.append(`<td>${render_cell(i, name)}</td>`);
+                    }
+
+                });
+            });
+
+            callback();
+        }
+
+        let renderInProcess = false;
+        let renderAgain = false;
+        let lazyRender = () => {
+            if (renderInProcess) {
+                renderAgain = true;
+            } else {
+                renderInProcess = true;
+                renderAgain = false;
+                setTimeout(() => {
+                    render(() => {
+                        renderInProcess = false;
+                        if (renderAgain) {
+                            lazyRender();
+                        }
+                    }, 10);
+                });
+            }
+        };
+
+        $(function () {
+            let settings = JSON.parse(window.localStorage.settings || '{}');
+            debugger;
+            $('#username').val(settings.username || '');
+            $('#split-by-versions').prop('checked', settings.splitByVersions || false);
+            for (let i of (settings.contestIds || [1])) {
+                $('#cb-contest-' + i).click().prop('checked', true);
+            }
+            $(`[name=kind]:first`).click().prop('checked', true);
+            $(`[name=kind][value="${settings.kind}"]`).click().prop('checked', true);
+
+            let availableTags = Object.keys(users);
+
+            $(".autocomplete").autocomplete({
+                source: availableTags
+            });
+            $('[name=kind], [name^=cb-contest-], #split-by-versions, #username').on('change', () => {
+                //debugger;
+                lazyRender();
+            });
+
+            lazyRender();
+        });
+
+    </script>
+
+    <script>
+
+    </script>
+</head>
+<body>
+
+    {# Комментарий #}
+
+    <div class="container-fluid">
+        <br>
+
+        {% include 'table.html' %}
+    </div>
+
+</body>
+</html>
