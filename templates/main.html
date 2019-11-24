@@ -17,6 +17,20 @@
     <script src="/api/users?js=1&v={{users_v}}"></script>
 
     <style>
+html,
+body {
+  height: 100%;
+}
+
+#page-content {
+  flex: 1 0 auto;
+}
+
+#sticky-footer {
+  flex-shrink: none;
+}
+
+
         .img-container {
             width: 57px;
             height: 57px;
@@ -235,15 +249,19 @@
 
     </script>
 </head>
-<body>
+<body class="d-flex flex-column">
 
-    {# Комментарий #}
-
-    <div class="container-fluid">
-        <br>
-
-        {% include 'table.html' %}
+    <div id="page-content">
+        <div class="container-fluid">
+            <br>
+            {% include 'table.html' %}
+        </div>
     </div>
+    <footer id="sticky-footer" class="py-4 bg-dark text-white-50">
+        <div class="container text-center">
+            <small>Copyright &copy; Your Website</small>
+        </div>
+    </footer>
 
 </body>
 </html>
