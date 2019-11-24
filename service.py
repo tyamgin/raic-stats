@@ -32,13 +32,18 @@ def games_with(player_name):
     contest_ids = list(filter(lambda x: x, contest_ids))
 
     kind = request.args.get('kind', type=str, default='')
+    versions_count = max(1, min(9999, request.args.get('versionsCount', type=int, default=10)))
 
     if not contest_ids or not kind:
         result = []
     else:
-        cursor.execute("SELECT * FROM games WHERE game_id IN"
-                       "(SELECT game_id FROM games WHERE player_name=%s AND kind=%s AND contest_id IN (" + ','.join(contest_ids) + "))",
-                       (player_name, kind))
+        cursor.execute(f"""SELECT * FROM games WHERE game_id IN
+                        (SELECT game_id FROM games WHERE player_name=%s
+                                                    AND kind=%s
+                                                    AND player_version > (SELECT MAX(player_version) FROM games WHERE player_name=%s) - %s
+                                                    AND contest_id IN ({','.join(contest_ids)})
+                        )""",
+                       (player_name, kind, player_name, versions_count))
         result = [row for row in cursor.fetchall()]
     return jsonify({
         'status': 'OK',

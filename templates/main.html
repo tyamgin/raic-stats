@@ -71,6 +71,7 @@
                 }
             }
             const kind = $('[name=kind]:checked').val();
+            const versionsCount = parseInt($('#versions-count').val());
 
             if (!username) {
                 callback();
@@ -78,10 +79,10 @@
             }
 
             window.localStorage.settings = JSON.stringify({
-                username, splitByVersions, contestIds, kind
+                username, splitByVersions, contestIds, kind, versionsCount
             });
 
-            $.getJSON(`api/gamesWith/${username}?contestIds=${contestIds.join(',')}&kind=${encodeURIComponent(kind)}`, function(data) {
+            $.getJSON(`api/gamesWith/${username}?contestIds=${contestIds.join(',')}&kind=${encodeURIComponent(kind)}&versionsCount=15`, function(data) {
                 console.log(data);
 
                 let data_by_game = {};
@@ -115,8 +116,6 @@
                         }
                     }
                 }
-                console.log(tbl);
-
 
                 let colOrder = {};
                 $.each(tbl, (i, row) => {
@@ -124,11 +123,13 @@
                         colOrder[j] = (colOrder[j] || 0) + (data.w || 0);
                     })
                 });
-                console.log(colOrder);
 
+                let getPlace = (item) => (users[item.split(' ')[0]] || {}).place || 100000;
                 let colUsers = Object.keys(colOrder);
-                colUsers.sort((a, b) => colOrder[a] - colOrder[b]);
-                console.log(colUsers);
+                colUsers.sort((a, b) => colOrder[a] !== colOrder[b] ? colOrder[a] - colOrder[b] : getPlace(a) - getPlace(b));
+
+                let rowUsers = Object.keys(tbl);
+                rowUsers.sort((a, b) => parseInt(b.split(' ')[1]) - parseInt(a.split(' ')[1]));
 
                 let render_image = (name_pair) => {
                     name_pair = name_pair.split(' ');
@@ -173,15 +174,14 @@
                     $table.find('thead tr').append(`<th scope="col">${render_image(name)}</th>`);
                 }
                 $table.find('tbody').html('');
-                $.each(tbl, (i, row) => {
+                for (let rowUser of rowUsers) {
                     $table.find('tbody').append('<tr></tr>');
                     let $tr = $table.find('tbody tr:last');
-                    $tr.append(`<th scope="row">${render_image(i)}</th>`);
+                    $tr.append(`<th scope="row">${render_image(rowUser)}</th>`);
                     for (let name of colUsers) {
-                        $tr.append(`<td>${render_cell(i, name)}</td>`);
+                        $tr.append(`<td>${render_cell(rowUser, name)}</td>`);
                     }
-
-                });
+                }
             });
 
             callback();
@@ -215,6 +215,7 @@
             }
             $(`[name=kind]:first`).click().prop('checked', true);
             $(`[name=kind][value="${settings.kind}"]`).click().prop('checked', true);
+            $('#versions-count').val(settings.versionsCount || 15);
 
             let availableTags = Object.keys(users);
 
