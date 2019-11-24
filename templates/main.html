@@ -95,7 +95,7 @@
                 username, splitByVersions, contestIds, kind, versionsCount
             });
 
-            $.getJSON(`api/gamesWith/${username}?contestIds=${contestIds.join(',')}&kind=${encodeURIComponent(kind)}&versionsCount=15`, function(data) {
+            $.getJSON(`api/gamesWith/${username}?contestIds=${contestIds.join(',')}&kind=${encodeURIComponent(kind)}&versionsCount=${versionsCount}`, function(data) {
                 console.log(data);
 
                 let data_by_game = {};
