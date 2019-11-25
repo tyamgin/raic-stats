@@ -26,19 +26,19 @@ def main():
 
 def insert_games(games):
     try:
-        cur = db().cursor()
-        for game in games:
-            cur.execute("SELECT * FROM games WHERE game_id = %s", game['game_id'])
-            if cur.rowcount == 0:
-                for line in game['scores']:
-                    cur.execute(
-                        "INSERT INTO games (game_id, kind, contest_id, timestamp, creator, token, player_name, player_version, score, place)"
-                        "VALUES            (%s,      %s,   %s,         %s,        %s,      %s,    %s,          %s,             %s,    %s)",
-                        (game['game_id'], game['kind'], game['contest_id'], 0, game['creator'], game['token'],
-                         line['player'], line['version'], line['score'], line['place']))
-            else:
-                log.error(f"Trying to insert game_id={game['game_id']} duplicate")
-        db().commit()
+        with db().cursor() as cursor:
+            for game in games:
+                cursor.execute("SELECT * FROM games WHERE game_id = %s", game['game_id'])
+                if cursor.rowcount == 0:
+                    for line in game['scores']:
+                        cursor.execute(
+                            "INSERT INTO games (game_id, kind, contest_id, timestamp, creator, token, player_name, player_version, score, place)"
+                            "VALUES            (%s,      %s,   %s,         %s,        %s,      %s,    %s,          %s,             %s,    %s)",
+                            (game['game_id'], game['kind'], game['contest_id'], 0, game['creator'], game['token'],
+                             line['player'], line['version'], line['score'], line['place']))
+                else:
+                    log.error(f"Trying to insert game_id={game['game_id']} duplicate")
+            db().commit()
     except Exception:
         db().rollback()
         raise
@@ -143,54 +143,51 @@ def update_users(contest_id):
 
 @main.command()
 def prepare_db():
-    cur = db().cursor()
-    log.info("Creating table games")
-    cur.execute("""CREATE TABLE IF NOT EXISTS games (
-        id int NOT NULL PRIMARY KEY auto_increment,
-        game_id int NOT NULL,
-        kind varchar(10),
-        contest_id int NOT NULL,
-        timestamp int unsigned NOT NULL,
-        creator varchar(50) NOT NULL,
-        token varchar(50),
-        player_name varchar(50) NOT NULL,
-        player_version int NOT NULL,
-        team_idx int,
-        score int,
-        place int
-    );""")
+    with db().cursor() as cursor:
+        log.info("Creating table games")
+        cursor.execute("""CREATE TABLE IF NOT EXISTS games (
+            id int NOT NULL PRIMARY KEY auto_increment,
+            game_id int NOT NULL,
+            kind varchar(10),
+            contest_id int NOT NULL,
+            timestamp int unsigned NOT NULL,
+            creator varchar(50) NOT NULL,
+            token varchar(50),
+            player_name varchar(50) NOT NULL,
+            player_version int NOT NULL,
+            team_idx int,
+            score int,
+            place int
+        );""")
 
-    for col in ('id', 'game_id', 'kind', 'contest_id', 'player_name', 'player_version'):
-        log.info(f"Creating index games({col})")
-        try:
-            cur.execute(f"CREATE INDEX {col} ON games ({col});")
-        except Exception:
-            err_str = traceback.format_exc()
-            if not 'Duplicate key name' in err_str:
-                raise
-            else:
-                log.warning(f"Index games({col}) already exists")
+        for col in ('id', 'game_id', 'kind', 'contest_id', 'player_name', 'player_version'):
+            log.info(f"Creating index games({col})")
+            try:
+                cursor.execute(f"CREATE INDEX {col} ON games ({col});")
+            except Exception:
+                err_str = traceback.format_exc()
+                if not 'Duplicate key name' in err_str:
+                    raise
+                else:
+                    log.warning(f"Index games({col}) already exists")
 
-    log.info("Creating table users")
-    cur.execute("""CREATE TABLE IF NOT EXISTS users (
-        id int NOT NULL PRIMARY KEY auto_increment,
-        place int NOT NULL,
-        name varchar(50) NOT NULL,
-        games int NOT NULL,
-        won_perc int NOT NULL,
-        rating int NOT NULL,
-        avatar text NOT NULL
-    );""")
+        log.info("Creating table users")
+        cursor.execute("""CREATE TABLE IF NOT EXISTS users (
+            id int NOT NULL PRIMARY KEY auto_increment,
+            place int NOT NULL,
+            name varchar(50) NOT NULL,
+            games int NOT NULL,
+            won_perc int NOT NULL,
+            rating int NOT NULL,
+            avatar text NOT NULL
+        );""")
 
-    log.info("Creating table settings")
-    cur.execute("""CREATE TABLE IF NOT EXISTS settings (
-        id int NOT NULL PRIMARY KEY auto_increment,
-        setting text NOT NULL,
-        value text NOT NULL
-    );""")
-
-
-
+        log.info("Creating table settings")
+        cursor.execute("""CREATE TABLE IF NOT EXISTS settings (
+            id int NOT NULL PRIMARY KEY auto_increment,
+            setting text NOT NULL,
+            value text NOT NULL
+        );""")
 
 
 if __name__ == "__main__":

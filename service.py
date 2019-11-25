@@ -14,10 +14,9 @@ templateEnv = jinja2.Environment(loader=templateLoader)
 
 @app.route("/")
 def main():
-    cursor = db().cursor()
-
-    cursor.execute("SELECT DISTINCT kind FROM games")
-    kinds = sorted([row['kind'] for row in cursor.fetchall()])
+    with db().cursor() as cursor:
+        cursor.execute("SELECT DISTINCT kind FROM games")
+        kinds = sorted([row['kind'] for row in cursor.fetchall()])
 
     template = templateEnv.get_template("main.html")
     return template.render(kinds=kinds, users_v=int(time.time() / 3600))
@@ -25,7 +24,6 @@ def main():
 
 @app.route("/api/gamesWith/<string:player_name>", methods=['GET'])
 def games_with(player_name):
-    cursor = db().cursor()
     available_contest_ids = ['0', '1', '2', '3', '4']
     contest_ids = map(lambda x: x if x in available_contest_ids else None,
                       request.args.get('contestIds', type=str, default='').split(','))
@@ -37,14 +35,15 @@ def games_with(player_name):
     if not contest_ids or not kind:
         result = []
     else:
-        cursor.execute(f"""SELECT * FROM games WHERE game_id IN
-                        (SELECT game_id FROM games WHERE player_name=%s
-                                                    AND kind=%s
-                                                    AND player_version > (SELECT MAX(player_version) FROM games WHERE player_name=%s) - %s
-                                                    AND contest_id IN ({','.join(contest_ids)})
-                        )""",
-                       (player_name, kind, player_name, versions_count))
-        result = [row for row in cursor.fetchall()]
+        with db().cursor() as cursor:
+            cursor.execute(f"""SELECT * FROM games WHERE game_id IN
+                            (SELECT game_id FROM games WHERE player_name=%s
+                                                        AND kind=%s
+                                                        AND player_version > (SELECT MAX(player_version) FROM games WHERE player_name=%s) - %s
+                                                        AND contest_id IN ({','.join(contest_ids)})
+                            )""",
+                           (player_name, kind, player_name, versions_count))
+            result = [row for row in cursor.fetchall()]
     return jsonify({
         'status': 'OK',
         'result': result
@@ -53,9 +52,9 @@ def games_with(player_name):
 
 @app.route("/api/users", methods=['GET'])
 def users():
-    cursor = db().cursor()
-    cursor.execute("SELECT * FROM users")
-    result = [row for row in cursor.fetchall()]
+    with db().cursor() as cursor:
+        cursor.execute("SELECT * FROM users")
+        result = [row for row in cursor.fetchall()]
     for row in result:
         if row['avatar'] and not row['avatar'].startswith('http'):
             row['avatar'] = 'https:' + row['avatar']
