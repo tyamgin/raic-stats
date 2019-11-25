@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
-from db import db
+from db import db, db_init
 from site_scrapper import SiteScrapper
 
 import time
@@ -191,4 +191,5 @@ def prepare_db():
 
 
 if __name__ == "__main__":
+    db_init()
     main()

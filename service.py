@@ -1,4 +1,4 @@
-from db import db
+from db import db, db_init
 
 from flask import Flask, jsonify, request
 import jinja2
@@ -65,6 +65,13 @@ def users():
         'status': 'OK',
         'result': result
     })
+
+
+@app.before_request
+def before_req():
+    # don't know wtf is going on, but i need to init db on each query
+    # https://stackoverflow.com/questions/33569457/pymysql-returning-old-snapshot-values-not-rerunning-query
+    db_init()
 
 
 if __name__ == "__main__":
