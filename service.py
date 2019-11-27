@@ -1,4 +1,6 @@
 from db import db, db_init
+from config import SEASON
+from crawler import get_setting
 
 from flask import Flask, jsonify, request
 import jinja2
@@ -19,7 +21,10 @@ def main():
         kinds = sorted([row['kind'] for row in cursor.fetchall()])
 
     template = templateEnv.get_template("main.html")
-    return template.render(kinds=kinds, users_v=int(time.time() / 3600))
+    return template.render(kinds=kinds,
+                           users_v=int(time.time() / 3600),
+                           last_game_id=get_setting('last_id', 0),
+                           season=SEASON)
 
 
 @app.route("/api/gamesWith/<string:player_name>", methods=['GET'])
