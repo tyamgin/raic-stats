@@ -59,12 +59,14 @@
             background-color: #f8f9fa;
         }
 
-        .table th {
+        .table th, .table td {
             padding-left: 0.25rem;
             padding-right: 0.25rem;
         }
         .table > tbody > tr > td {
             vertical-align: middle;
+            text-align: center;
+            font-size: 14px;
         }
 
         .column1 {
@@ -203,10 +205,14 @@
                 let $table = $('#table');
                 let $tableLeft = $('#table-left');
                 $tableLeft.find('thead').html(`<tr><th scope="col"><div class="tcell"></div></th></tr>`);
+                $tableLeft.find('tbody').html('');
+
+                $table.find('tbody').html('');
+                $table.find('thead').html('<tr></tr>');
                 for (let name of colUsers) {
                     $table.find('thead tr').append(`<th scope="col">${render_image(name)}</th>`);
                 }
-                $table.find('tbody').html('');
+
                 for (let rowUser of rowUsers) {
                     $table.find('tbody').append('<tr></tr>');
                     let $tr = $table.find('tbody tr:last');
