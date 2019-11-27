@@ -66,6 +66,25 @@
         .table > tbody > tr > td {
             vertical-align: middle;
         }
+
+        .column1 {
+            float: left;
+            width: 72px;
+        }
+        .column2 {
+            float: left;
+            width: calc(100% - 72px);
+            overflow-x: scroll;
+        }
+        .row1:after {
+            content: "";
+            display: table;
+            clear: both;
+        }
+        .tcell {
+            width: 57px;
+            height: 57px;
+        }
     </style>
 
     <script>
@@ -182,7 +201,8 @@
                 };
 
                 let $table = $('#table');
-                $table.find('thead').html(`<tr><th scope="col">#</th></tr>`);
+                let $tableLeft = $('#table-left');
+                $tableLeft.find('thead').html(`<tr><th scope="col"><div class="tcell"></div></th></tr>`);
                 for (let name of colUsers) {
                     $table.find('thead tr').append(`<th scope="col">${render_image(name)}</th>`);
                 }
@@ -190,9 +210,9 @@
                 for (let rowUser of rowUsers) {
                     $table.find('tbody').append('<tr></tr>');
                     let $tr = $table.find('tbody tr:last');
-                    $tr.append(`<th scope="row">${render_image(rowUser)}</th>`);
+                    $tableLeft.find('tbody').append(`<tr><th scope="row">${render_image(rowUser)}</th></tr>`);
                     for (let name of colUsers) {
-                        $tr.append(`<td>${render_cell(rowUser, name)}</td>`);
+                        $tr.append(`<td><div class="tcell">${render_cell(rowUser, name)}</div></td>`);
                     }
                 }
             });

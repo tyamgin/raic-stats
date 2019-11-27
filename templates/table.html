@@ -5,7 +5,7 @@
     <input type="text" id="username" class="form-control autocomplete" placeholder="Username" aria-label="Username" aria-describedby="addon-wrapping1">
     <input type="number" min="1" max="9999" value="15" id="versions-count" class="form-control" placeholder="15" aria-label="Versions count" aria-describedby="addon-wrapping2">
     <div class="input-group-append">
-        <span class="input-group-text" id="addon-wrapping2">Last versions</span>
+        <span class="input-group-text" id="addon-wrapping2">Number of your versions to show</span>
     </div>
 </div>
 
@@ -44,14 +44,18 @@
     {% endfor %}
 </div>
 
-<table id="table" class="table ">
-    <thead>
-    <tr>
 
-    </tr>
-    </thead>
-    <tbody>
-
-
-    </tbody>
-</table>
+<div class="row1">
+  <div class="column1">
+      <table id="table-left" class="table">
+            <thead><tr></tr></thead>
+            <tbody></tbody>
+      </table>
+  </div>
+  <div class="column2">
+      <table id="table" class="table">
+            <thead><tr></tr></thead>
+            <tbody></tbody>
+      </table>
+  </div>
+</div>
