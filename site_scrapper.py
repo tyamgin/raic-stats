@@ -31,6 +31,20 @@ class SiteScrapper(object):
             raise RuntimeError(page.status_code)
         return page
 
+    def get_status_by_caption(self, status_caption, default=None):
+        status_caption = status_caption.strip()
+        if "Game is failed" in status_caption:
+            return "failed"
+        if "Game is tested" in status_caption:
+            return "tested"
+        if "Game is testing now" in status_caption:
+            return "testing"
+        if "Game is not testing yet" in status_caption:
+            return "testing"
+        if default is not None:
+            return default
+        raise RuntimeError(f"Unknown game status '{status_caption}'")
+
     def crawl_game_page(self, game_id):
         log.info("Crawling game page {}".format(game_id))
 
@@ -58,18 +72,23 @@ class SiteScrapper(object):
             "creator": creator,
             "token": token,
             "contest_id": contest_id,
+            "status": "",
             "scores": [],
         }
 
-        for div in game_div.xpath('.//div[contains(@class, "topUser")]'):
-            name_version_pair = div.xpath('.//p[@class="userName"]')[0].text_content().strip().split()
-            game['scores'].append({
-                "player": name_version_pair[0],
-                "version": int(name_version_pair[1]),
-                "score": int(div.xpath('.//p[@class="points"]')[0].text_content().strip().split()[0]),
-                "place": int(div.xpath('.//p[@class="place"]')[0].text_content().strip().split()[0]),
-            })
-        assert game['scores']
+        status_caption = game_div.xpath('.//span[contains(@class, "gameStatus")]')[0].text_content()
+        game["status"] = self.get_status_by_caption(status_caption)
+
+        if game["status"] == "tested":
+            for div in game_div.xpath('.//div[contains(@class, "topUser")]'):
+                name_version_pair = div.xpath('.//p[@class="userName"]')[0].text_content().strip().split()
+                game['scores'].append({
+                    "player": name_version_pair[0],
+                    "version": int(name_version_pair[1]),
+                    "score": int(div.xpath('.//p[@class="points"]')[0].text_content().strip().split()[0]),
+                    "place": int(div.xpath('.//p[@class="place"]')[0].text_content().strip().split()[0]),
+                })
+            assert game['scores']
         return game
 
     def crawl_games_page(self, contest_num, page_num):
@@ -79,6 +98,10 @@ class SiteScrapper(object):
         page = self.make_request(f'contest/{contest_num}/games/page/{page_num}')
         tree = html.fromstring(page.content)
         try:
+            if "Contest isn't started yet" in tree.text_content():
+                log.info(f"Contest {contest_num} isn't started yet")
+                return []
+
             for tr in tree.xpath(GAMES_XPATH_GAME):
                 tds = tr.xpath("td")
                 game_id_str = tds[0].text_content().strip()
@@ -87,42 +110,42 @@ class SiteScrapper(object):
                     return []
 
                 game_id = int(game_id_str)
-
-                if "Game is testing now" in tr.text_content():
-                    log.debug("Skipping game {}, still testing".format(game_id))
-                    continue
+                status = self.get_status_by_caption(tr.text_content(), default="tested")
 
                 kind = tds[1].text_content().strip()
                 creator = tds[3].text_content().strip()
                 players = tds[4].text_content().split()
                 versions = tds[5].text_content().split()
-                scores = tds[6].text_content().split()
-                places = tds[7].text_content().split()
-                deltas = tds[8].text_content().split()
-                token = tds[9].xpath("div")[0].get("data-token")
-                if not deltas:
-                    deltas = [None] * 10
-                    log.debug("Game {} is not ready yet".format(players))
-
-                data = list(zip(players, versions, scores, places, deltas))
 
                 game = {
                     "game_id": game_id,
                     "kind": kind,
                     "creator": creator,
-                    "token": token,
                     "contest_id": contest_num,
-                    "scores": [
-                        {
-                            "player": player,
-                            "version": int(version),
-                            "score": int(score),
-                            "place": int(place),
-                            "delta": int(delta) if delta is not None else None
-                        } for player, version, score, place, delta in data
-                    ]
+                    "status": status,
+                    "scores": []
                 }
 
+                if status == "tested":
+                    scores = tds[6].text_content().split()
+                    places = tds[7].text_content().split()
+                    deltas = tds[8].text_content().split()
+                    token = tds[9].xpath("div")[0].get("data-token")
+                    game["token"] = token
+
+                    if not deltas:
+                        deltas = [None] * 10
+                        log.debug("Game {} is not ready yet".format(players))
+
+                    data = list(zip(players, versions, scores, places, deltas))
+
+                    game["scores"] = [{
+                        "player": player,
+                        "version": int(version),
+                        "score": int(score),
+                        "place": int(place),
+                        "delta": int(delta) if delta is not None else None
+                    } for player, version, score, place, delta in data]
                 games.append(game)
         except Exception:
             games = None

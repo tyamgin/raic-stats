@@ -24,20 +24,19 @@ def main():
     pass
 
 
-def insert_games(games):
+def insert_game(game):
     try:
         with db().cursor() as cursor:
-            for game in games:
-                cursor.execute("SELECT * FROM games WHERE game_id = %s", game['game_id'])
-                if cursor.rowcount == 0:
-                    for line in game['scores']:
-                        cursor.execute(
-                            "INSERT INTO games (game_id, kind, contest_id, timestamp, creator, token, player_name, player_version, score, place)"
-                            "VALUES            (%s,      %s,   %s,         %s,        %s,      %s,    %s,          %s,             %s,    %s)",
-                            (game['game_id'], game['kind'], game['contest_id'], 0, game['creator'], game['token'],
-                             line['player'], line['version'], line['score'], line['place']))
-                else:
-                    log.error(f"Trying to insert game_id={game['game_id']} duplicate")
+            cursor.execute("SELECT * FROM games WHERE game_id = %s", game['game_id'])
+            if cursor.rowcount == 0:
+                for line in game['scores']:
+                    cursor.execute(
+                        "INSERT INTO games (game_id, kind, contest_id, timestamp, creator, token, player_name, player_version, score, place)"
+                        "VALUES            (%s,      %s,   %s,         %s,        %s,      %s,    %s,          %s,             %s,    %s)",
+                        (game['game_id'], game['kind'], game['contest_id'], 0, game['creator'], game['token'],
+                         line['player'], line['version'], line['score'], line['place']))
+            else:
+                log.debug(f"Trying to insert game_id={game['game_id']} duplicate")
             db().commit()
     except Exception:
         db().rollback()
@@ -45,11 +44,13 @@ def insert_games(games):
 
 
 @main.command()
-@click.option('--contest-id', type=int, default=2)
-def run_contest(contest_id):
+@click.option('--contest-id', type=int, default=1)
+@click.option('--pages-count', type=int, default=10000)
+def run_contest(contest_id, pages_count):
     scrapper = SiteScrapper()
+    max_id = 0
 
-    for page in range(1, 10**5):
+    for page in range(1, pages_count + 1):
         games = scrapper.crawl_games_page(contest_id, page)
         if games is None:
             continue
@@ -57,10 +58,16 @@ def run_contest(contest_id):
             break
 
         try:
-            insert_games(games)
+            for game in games:
+                if game["status"] == "tested":
+                    insert_game(game)
+                max_id = max(max_id, game["game_id"])
+
         except Exception:
             log.error(traceback.format_exc())
         time.sleep(1)
+
+    update_setting("max_id", max(max_id, int(get_setting("max_id", 0))))
 
 
 def get_setting(setting, default=None):
@@ -99,15 +106,17 @@ def run(only_game_id):
         game = scrapper.crawl_game_page(game_id)
         if not game:  # 404
             # check for deleted game
-            with db().cursor() as cursor:
-                cursor.execute("SELECT MAX(game_id) AS max_game_id FROM games")
-                max_game_id = cursor.fetchone()['max_game_id']
-                log.info(f"Max game_id is {max_game_id}")
-                if max_game_id <= game_id:
-                    break
+            max_game_id = int(get_setting("max_id", 0))
+            log.info(f"Max game_id is {max_game_id}")
+            if max_game_id <= game_id:
+                log.info(f"Game {game_id} is probably deleted, skip it")
+                break
+        if game and game["status"] == "testing":
+            log.info("Last status 'testing', break")
+            break
 
-        if game:
-            insert_games([game])
+        if game and game["status"] == "tested":
+            insert_game(game)
         if only_game_id:
             break
 
@@ -119,6 +128,7 @@ def run(only_game_id):
 @main.command()
 @click.option('--contest-id', default='1')
 def update_users(contest_id):
+    log.info("Starting update_users")
     scrapper = SiteScrapper()
 
     standings = scrapper.crawl_top(contest_id)
@@ -139,7 +149,7 @@ def update_users(contest_id):
     except:
         db().rollback()
         log.error(traceback.format_exc())
-
+    log.info("update_users finished")
 
 @main.command()
 def prepare_db():
